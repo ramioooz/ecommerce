@@ -67,13 +67,17 @@ export class OrdersService {
     });
   }
 
-  async findOne(id: string): Promise<Order> {
+  async findOne(id: string, userId?: string): Promise<Order> {
     const order = await this.ordersRepository.findOne({
       where: { id },
       relations: ['items'],
     });
 
     if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (userId && order.userId !== userId) {
       throw new NotFoundException('Order not found');
     }
 
@@ -86,7 +90,7 @@ export class OrdersService {
     return this.ordersRepository.save(order);
   }
 
-  async cancel(id: string): Promise<Order> {
+  async cancel(id: string, userId?: string): Promise<Order> {
     return this.updateStatus(id, 'cancelled');
   }
 }
