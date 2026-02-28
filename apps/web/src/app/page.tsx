@@ -1,30 +1,10 @@
 import Link from 'next/link';
+import { AppHeader } from './components/AppHeader';
 
 export default function Home() {
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold">
-            E-Shop
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link href="/products" className="hover:text-primary">
-              Products
-            </Link>
-            <Link href="/cart" className="hover:text-primary">
-              Cart
-            </Link>
-            <Link href="/orders" className="hover:text-primary">
-              Orders
-            </Link>
-            <Link href="/profile" className="hover:text-primary">
-              Profile
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-b from-gray-50 to-white">

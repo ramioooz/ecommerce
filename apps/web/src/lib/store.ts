@@ -1,4 +1,103 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isHydrated: boolean;
+  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setUser: (user: User) => void;
+  logout: () => void;
+  initializeFromStorage: () => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isHydrated: false,
+      setAuth: (user, accessToken, refreshToken) => {
+        set({ user, accessToken, refreshToken, isHydrated: true });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('accessToken', accessToken);
+        }
+      },
+      setUser: (user) => {
+        set({ user });
+      },
+      logout: () => {
+        set({ user: null, accessToken: null, refreshToken: null, isHydrated: true });
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('auth-storage');
+        }
+      },
+      initializeFromStorage: () => {
+        if (typeof window === 'undefined') {
+          return;
+        }
+
+        const persistedState = localStorage.getItem('auth-storage');
+        if (persistedState) {
+          try {
+            const parsed = JSON.parse(persistedState) as {
+              state?: {
+                user?: User | null;
+                accessToken?: string | null;
+                refreshToken?: string | null;
+              };
+            };
+            const persistedUser = parsed.state?.user || null;
+            const persistedAccessToken = parsed.state?.accessToken || null;
+            const persistedRefreshToken = parsed.state?.refreshToken || null;
+
+            if (persistedAccessToken) {
+              set({
+                user: persistedUser,
+                accessToken: persistedAccessToken,
+                refreshToken: persistedRefreshToken,
+                isHydrated: true,
+              });
+              localStorage.setItem('accessToken', persistedAccessToken);
+              return;
+            }
+          } catch {
+            localStorage.removeItem('auth-storage');
+          }
+        }
+
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+          set((state) => ({
+            accessToken: state.accessToken || token,
+            isHydrated: true,
+          }));
+          return;
+        }
+
+        set({ isHydrated: true });
+      },
+    }),
+    {
+      name: 'auth-storage',
+    }
+  )
+);
+
+export const clearClientAuth = (): void => {
+  useAuthStore.getState().logout();
+};
 
 interface CartItem {
   productId: string;

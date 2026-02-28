@@ -20,9 +20,19 @@ export class CartService {
     });
 
     if (!cart) {
-      cart = this.cartsRepository.create({ userId });
-      cart = await this.cartsRepository.save(cart);
+      const createdCart = this.cartsRepository.create({ userId });
+      const savedCart = await this.cartsRepository.save(createdCart);
+      cart = await this.cartsRepository.findOne({
+        where: { id: savedCart.id },
+        relations: ['items'],
+      });
     }
+
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    cart.items = cart.items || [];
 
     return cart;
   }
