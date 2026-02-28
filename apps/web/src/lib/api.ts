@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { clearClientAuth } from './store';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:20000';
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -24,7 +25,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('accessToken');
+        clearClientAuth();
         window.location.href = '/auth/login';
       }
     }
@@ -57,7 +58,13 @@ export const categories = {
 
 export const cart = {
   get: () => api.get('/cart'),
-  addItem: (data: { productId: string; productName: string; quantity: number; price: number }) =>
+  addItem: (data: {
+    productId: string;
+    productName: string;
+    productImage?: string;
+    quantity: number;
+    price: number;
+  }) =>
     api.post('/cart/items', data),
   updateItem: (productId: string, data: { quantity: number }) =>
     api.put(`/cart/items/${productId}`, data),
