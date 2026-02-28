@@ -1,0 +1,290 @@
+name: ecommerce
+
+services:
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: ecommerce-web
+    ports:
+      - "20001:3001"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:20000
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  api-gateway:
+    build:
+      context: ./apps/api-gateway
+      dockerfile: Dockerfile
+    container_name: ecommerce-api-gateway
+    ports:
+      - "20000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  user-service:
+    build:
+      context: ./apps/user-service
+      dockerfile: Dockerfile
+    container_name: ecommerce-user-service
+    ports:
+      - "20006:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-users:5432/users
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - postgres-users
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  product-service:
+    build:
+      context: ./apps/product-service
+      dockerfile: Dockerfile
+    container_name: ecommerce-product-service
+    ports:
+      - "20002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-products:5432/products
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - postgres-products
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  order-service:
+    build:
+      context: ./apps/order-service
+      dockerfile: Dockerfile
+    container_name: ecommerce-order-service
+    ports:
+      - "20003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-orders:5432/orders
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - postgres-orders
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  payment-service:
+    build:
+      context: ./apps/payment-service
+      dockerfile: Dockerfile
+    container_name: ecommerce-payment-service
+    ports:
+      - "20004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-payments:5432/payments
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9092
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_xxx}
+    depends_on:
+      - postgres-payments
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  notification-service:
+    build:
+      context: ./apps/notification-service
+      dockerfile: Dockerfile
+    container_name: ecommerce-notification-service
+    ports:
+      - "20005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9092
+      - SMTP_HOST=${SMTP_HOST:-mailhog}
+      - SMTP_PORT=1025
+      - SMTP_USER=${SMTP_USER:-""}
+      - SMTP_PASS=${SMTP_PASS:-""}
+    depends_on:
+      - redis
+      - kafka
+      - mailhog
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  postgres-users:
+    image: postgres:15-alpine
+    container_name: ecommerce-postgres-users
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=users
+    volumes:
+      - postgres-users-data:/var/lib/postgresql/data
+    ports:
+      - "25432:5432"
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  postgres-products:
+    image: postgres:15-alpine
+    container_name: ecommerce-postgres-products
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=products
+    volumes:
+      - postgres-products-data:/var/lib/postgresql/data
+    ports:
+      - "25433:5432"
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  postgres-orders:
+    image: postgres:15-alpine
+    container_name: ecommerce-postgres-orders
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=orders
+    volumes:
+      - postgres-orders-data:/var/lib/postgresql/data
+    ports:
+      - "25434:5432"
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  postgres-payments:
+    image: postgres:15-alpine
+    container_name: ecommerce-postgres-payments
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=payments
+    volumes:
+      - postgres-payments-data:/var/lib/postgresql/data
+    ports:
+      - "25435:5432"
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecommerce-redis
+    ports:
+      - "26379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ecommerce-kafka
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+      - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    ports:
+      - "29092:9092"
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: ecommerce-mailhog
+    ports:
+      - "21025:1025"
+      - "28025:8025"
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: ecommerce-minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    ports:
+      - "29000:9000"
+      - "29001:9001"
+    restart: unless-stopped
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  postgres-users-data:
+  postgres-products-data:
+  postgres-orders-data:
+  postgres-payments-data:
+  redis-data:
+  kafka-data:
+  minio-data:
