@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrdersModule } from './orders/orders.module';
 import { CartModule } from './cart/cart.module';
+import { AuthModule } from './auth/auth.module';
 import { Order } from './orders/entities/order.entity';
 import { OrderItem } from './orders/entities/order-item.entity';
 import { Cart } from './cart/entities/cart.entity';
@@ -25,6 +26,7 @@ import { CartItem } from './cart/entities/cart-item.entity';
       }),
       inject: [ConfigService],
     }),
+    AuthModule,
     OrdersModule,
     CartModule,
   ],
