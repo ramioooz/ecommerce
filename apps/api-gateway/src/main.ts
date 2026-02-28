@@ -19,8 +19,13 @@ async function bootstrap() {
     }),
   );
 
+  const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:20001,http://localhost:3001')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+    origin: corsOrigins,
     credentials: true,
   });
 
