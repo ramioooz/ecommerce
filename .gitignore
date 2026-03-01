@@ -12,3 +12,6 @@ build/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+.pw-browsers/
+playwright-report/
+test-results/
